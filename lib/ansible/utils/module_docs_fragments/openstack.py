@@ -23,16 +23,23 @@ class ModuleDocFragment(object):
 options:
   cloud:
     description:
-      - Named cloud to operate against. Provides default values for I(auth) and I(auth_plugin)
+      - Named cloud or cloud config to operate against.
+        If I(cloud) is a string, it references a named cloud config as defined
+        in an OpenStack clouds.yaml file. Provides default values for I(auth)
+        and I(auth_type). This parameter is not needed if I(auth) is provided
+        or if OpenStack OS_* environment variables are present.
+        If I(cloud) is a dict, it contains a complete cloud configuration like
+        would be in a section of clouds.yaml.
     required: false
   auth:
     description:
       - Dictionary containing auth information as needed by the cloud's auth
-        plugin strategy. For the default I{password) plugin, this would contain
+        plugin strategy. For the default I(password) plugin, this would contain
         I(auth_url), I(username), I(password), I(project_name) and any
         information about domains if the cloud supports them. For other plugins,
         this param will need to contain whatever parameters that auth plugin
-        requires. This parameter is not needed if a named cloud is provided.
+        requires. This parameter is not needed if a named cloud is provided or
+        OpenStack OS_* environment variables are present.
     required: false
   auth_type:
     description:
@@ -40,21 +47,16 @@ options:
         password authentication, the name of the plugin should be indicated here
         and the contents of the I(auth) parameter should be updated accordingly.
     required: false
-    default: password
   region_name:
     description:
       - Name of the region.
     required: false
-  availability_zone:
-    description:
-      - Name of the availability zone.
-    required: false
   wait:
     description:
       - Should ansible wait until the requested resource is complete.
+    type: bool
     required: false
-    default: "yes"
-    choices: ["yes", "no"]
+    default: true
   timeout:
     description:
       - How long should ansible wait for the requested resource.
@@ -65,13 +67,12 @@ options:
       - How long should the socket layer wait before timing out for API calls.
         If this is omitted, nothing will be passed to the requests library.
     required: false
-    default: None
-  validate_certs:
+  verify:
     description:
-      - Whether or not SSL API requests should be verified.
+      - Whether or not SSL API requests should be verified. Before 2.3 this defaulted to True.
+    type: bool
     required: false
-    default: True
-    aliases: ['verify']
+    aliases: ['validate_certs']
   cacert:
     description:
       - A path to a CA Cert bundle that can be used as part of verifying
@@ -79,25 +80,30 @@ options:
     required: false
   cert:
     description:
-      - A path to a client certificate to use as part of the SSL transaction
+      - A path to a client certificate to use as part of the SSL transaction.
     required: false
   key:
     description:
-      - A path to a client key to use as part of the SSL transaction
+      - A path to a client key to use as part of the SSL transaction.
     required: false
-  endpoint_type:
+  interface:
     description:
         - Endpoint URL type to fetch from the service catalog.
     choices: [public, internal, admin]
     required: false
     default: public
-requirements: [shade]
+    aliases: ['endpoint_type']
+    version_added: "2.3"
+requirements:
+  - python >= 2.7
+  - shade
 notes:
   - The standard OpenStack environment variables, such as C(OS_USERNAME)
-    may be user instead of providing explicit values.
+    may be used instead of providing explicit values.
   - Auth information is driven by os-client-config, which means that values
     can come from a yaml config file in /etc/ansible/openstack.yaml,
     /etc/openstack/clouds.yaml or ~/.config/openstack/clouds.yaml, then from
     standard environment variables, then finally by explicit parameters in
-    plays.
+    plays. More information can be found at
+    U(http://docs.openstack.org/developer/os-client-config)
 '''

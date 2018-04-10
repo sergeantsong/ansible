@@ -2,19 +2,20 @@
 %define ansible_version $VERSION
 
 %if 0%{?rhel} == 5
-%define __python /usr/bin/python26
+%define __python2 /usr/bin/python26
 %endif
 
 Name:      %{name}
 Version:   %{ansible_version}
 Release:   1%{?dist}
-Url:       http://www.ansible.com
+Url:       https://www.ansible.com
 Summary:   SSH-based application deployment, configuration management, and IT orchestration platform
-License:   GPLv3
+License:   GPLv3+
 Group:     Development/Libraries
 Source:    http://releases.ansible.com/ansible/%{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
-%{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
+%{!?__python2: %global __python2 /usr/bin/python2.6}
+%{!?python_sitelib: %global python_sitelib %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 
 BuildArch: noarch
 
@@ -28,11 +29,17 @@ Requires: python26-jinja2
 Requires: python26-keyczar
 Requires: python26-httplib2
 Requires: python26-setuptools
+Requires: python26-six
 %endif
 
 # RHEL == 6
 %if 0%{?rhel} == 6
-Requires: python-crypto2.6
+Requires: python-crypto
+%endif
+
+# RHEL >=7
+%if 0%{?rhel} >= 7
+Requires: python2-cryptography
 %endif
 
 # RHEL > 5
@@ -42,9 +49,8 @@ BuildRequires: python-setuptools
 Requires: PyYAML
 Requires: python-paramiko
 Requires: python-jinja2
-Requires: python-keyczar
-Requires: python-httplib2
 Requires: python-setuptools
+Requires: python-six
 %endif
 
 # FEDORA > 17
@@ -57,10 +63,11 @@ Requires: python-jinja2
 Requires: python-keyczar
 Requires: python-httplib2
 Requires: python-setuptools
+Requires: python-six
 %endif
 
 # SuSE/openSuSE
-%if 0%{?suse_version} 
+%if 0%{?suse_version}
 BuildRequires: python-devel
 BuildRequires: python-setuptools
 Requires: python-paramiko
@@ -69,6 +76,7 @@ Requires: python-keyczar
 Requires: python-yaml
 Requires: python-httplib2
 Requires: python-setuptools
+Requires: python-six
 %endif
 
 Requires: sshpass
@@ -85,11 +93,29 @@ are transferred to managed machines automatically.
 %setup -q
 
 %build
-%{__python} setup.py build
+%{__python2} setup.py build
 
 %install
-%{__python} setup.py install -O1 --prefix=%{_prefix} --root=%{buildroot}
+%{__python2} setup.py install --root=%{buildroot}
+
+for i in %{buildroot}/%{_bindir}/{ansible,ansible-console,ansible-doc,ansible-galaxy,ansible-playbook,ansible-pull,ansible-vault}; do
+    mv $i $i-%{python2_version}
+    ln -s %{_bindir}/$(basename $i)-%{python2_version} $i
+    ln -s %{_bindir}/$(basename $i)-%{python2_version} $i-2
+done
+
+# Amazon Linux doesn't install to dist-packages but python_sitelib expands to
+# that location and the python interpreter expects things to be there.
+if expr x'%{python_sitelib}' : 'x.*dist-packages/\?' ; then
+    DEST_DIR='%{buildroot}%{python_sitelib}'
+    SOURCE_DIR=$(echo "$DEST_DIR" | sed 's/dist-packages/site-packages/g')
+    if test -d "$SOURCE_DIR" -a ! -d "$DEST_DIR" ; then
+        mv $SOURCE_DIR $DEST_DIR
+    fi
+fi
+
 mkdir -p %{buildroot}/etc/ansible/
+mkdir -p %{buildroot}/etc/ansible/roles/
 cp examples/hosts %{buildroot}/etc/ansible/
 cp examples/ansible.cfg %{buildroot}/etc/ansible/
 mkdir -p %{buildroot}/%{_mandir}/man1/
@@ -105,15 +131,42 @@ rm -rf %{buildroot}
 %{_bindir}/ansible*
 %dir %{_datadir}/ansible
 %config(noreplace) %{_sysconfdir}/ansible
-%doc README.md PKG-INFO COPYING
+%doc README.rst PKG-INFO COPYING CHANGELOG.md
 %doc %{_mandir}/man1/ansible*
 
 %changelog
 
-* Thu Feb 19 2015 Ansible, Inc. <support@ansible.com> - 1.8.4
+* Wed Feb 24 2016 Ansible, Inc. <info@ansible.com> - 2.0.1.0-1
+- Release 2.0.1.0-1
+
+* Thu Jan 14 2016 Ansible, Inc. <info@ansible.com> - 2.0.0.2-1
+- Release 2.0.0.2-1
+
+* Tue Jan 12 2016 Ansible, Inc. <info@ansible.com> - 2.0.0.1-1
+- Release 2.0.0.1-1
+
+* Tue Jan 12 2016 Ansible, Inc. <info@ansible.com> - 2.0.0.0-1
+- Release 2.0.0.0-1
+
+* Fri Oct 09 2015 Ansible, Inc. <info@ansible.com> - 1.9.4
+- Release 1.9.4
+
+* Thu Sep 03 2015 Ansible, Inc. <info@ansible.com> - 1.9.3
+- Release 1.9.3
+
+* Wed Jun 24 2015 Ansible, Inc. <info@ansible.com> - 1.9.2
+- Release 1.9.2
+
+* Mon Apr 27 2015 Ansible, Inc. <info@ansible.com> - 1.9.1
+- Release 1.9.1
+
+* Wed Mar 25 2015 Ansible, Inc. <info@ansible.com> - 1.9.0
+- Release 1.9.0
+
+* Thu Feb 19 2015 Ansible, Inc. <info@ansible.com> - 1.8.4
 - Release 1.8.4
 
-* Tue Feb 17 2015 Ansible, Inc. <support@ansible.com> - 1.8.3
+* Tue Feb 17 2015 Ansible, Inc. <info@ansible.com> - 1.8.3
 - Release 1.8.3
 
 * Thu Dec 04 2014 Michael DeHaan <michael@ansible.com> - 1.8.2
